@@ -1,0 +1,182 @@
+name: Build and release package binaries
+on:
+  workflow_dispatch:
+    inputs:
+      commit_hash:
+        description: 'Hash of the commit to build Smelter from'
+        required: true
+        type: string
+      description:
+        description: 'Brief description of tested release'
+        type: string
+        default: ''
+      linux-x86_64:
+        description: 'Linux amd64'
+        type: boolean
+        default: true
+      linux-arm64:
+        description: 'Linux arm64'
+        type: boolean
+        default: false
+      macos-x86_64:
+        description: 'Intel Mac'
+        type: boolean
+        default: false
+      macos-arm64:
+        description: 'Apple silicon Mac'
+        type: boolean
+        default: true
+
+jobs:
+  binaries-linux-x86_64:
+    runs-on: ubuntu-24.04
+    if: ${{ inputs.linux-x86_64 }}
+    steps:
+      - name: 🛠 Install system dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri libxcb-xfixes0-dev ffmpeg libavcodec-dev libavformat-dev libavfilter-dev libavdevice-dev libopus-dev
+      - name: 🔧 Install the rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: 📦 Package
+        run: cargo run -p tools --bin package_for_release
+
+      - name: Run dependency check
+        run: ./tools/build/smelter/dependency_check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_linux_x86_64.tar.gz
+          path: ./tools/build/smelter_linux_x86_64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_with_web_renderer_linux_x86_64.tar.gz
+          path: ./tools/build/smelter_with_web_renderer_linux_x86_64.tar.gz
+
+  binaries-linux-aarch64:
+    runs-on: ubuntu-24.04-arm
+    if: ${{ inputs.linux-arm64 }}
+    steps:
+      - name: 🛠 Install system dependencies
+        run: |
+          sudo apt-get update -y -qq
+          sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri libxcb-xfixes0-dev ffmpeg libavcodec-dev libavformat-dev libavfilter-dev libavdevice-dev libopus-dev curl git build-essential libssl-dev pkg-config libclang-dev
+      - name: 🔧 Install the rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: 📦 Package
+        run: cargo run -p tools --bin package_for_release
+
+      - name: Run dependency check
+        run: ./tools/build/smelter/dependency_check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_linux_aarch64.tar.gz
+          path: ./tools/build/smelter_linux_aarch64.tar.gz
+
+  binaries-macos-x86_64:
+    runs-on: macos-13
+    if: ${{ inputs.macos-x86_64 }}
+    steps:
+      - name: 🛠 Install system dependencies
+        run: brew install ffmpeg
+
+      - name: 🔧 Install the rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: 📦 Package
+        run: cargo run -p tools --bin package_for_release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_darwin_x86_64.tar.gz
+          path: ./tools/build/smelter_darwin_x86_64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_with_web_renderer_darwin_x86_64.tar.gz
+          path: ./tools/build/smelter_with_web_renderer_darwin_x86_64.tar.gz
+
+  binaries-macos-aarch64:
+    runs-on: macos-14
+    if: ${{ inputs.macos-arm64 }}
+    steps:
+      - name: 🛠 Install system dependencies
+        run: brew install ffmpeg
+
+      - name: 🔧 Install the rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: 📦 Package
+        run: cargo run -p tools --bin package_for_release
+
+      - name: Run dependency check
+        run: ./tools/build/smelter/dependency_check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_darwin_aarch64.tar.gz
+          path: ./tools/build/smelter_darwin_aarch64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smelter_with_web_renderer_darwin_aarch64.tar.gz
+          path: ./tools/build/smelter_with_web_renderer_darwin_aarch64.tar.gz
+
+  release-rc:
+    runs-on: ubuntu-24.04
+    if: ${{ always() && !failure() && !cancelled() }}
+    needs: [binaries-linux-x86_64, binaries-linux-aarch64, binaries-macos-x86_64, binaries-macos-aarch64]
+    permissions:
+      contents: write
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Downlad smelter binaries
+        uses: actions/download-artifact@v5
+
+      - name: List files
+        run: ls -R ${{ github.workspace }}
+
+      - name: Shorten hash
+        id: hash-shortening
+        run: |
+          SHORT_HASH=$(./shorten_commit_hash.sh '${{ inputs.commit_hash }}')
+          echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
+        working-directory: ./scripts
+
+      - name: Release Smelter RC
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.hash-shortening.outputs.SHORT_HASH }}
+          body: ${{ inputs.description }}
+          files: ${{ github.workspace }}/**/smelter*.tar.gz
+          preserve_order: true
