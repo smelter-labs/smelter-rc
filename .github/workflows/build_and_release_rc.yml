@@ -168,10 +168,11 @@ jobs:
 
       - name: Shorten hash
         id: hash-shortening
+        env:
+          HASH: ${{ inputs.commit_hash }}
         run: |
-          SHORT_HASH=$(./shorten_commit_hash.sh '${{ inputs.commit_hash }}')
+          SHORT_HASH=${HASH:0:8}
           echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
-        working-directory: ./scripts
 
       - name: Release Smelter RC
         uses: softprops/action-gh-release@v2
