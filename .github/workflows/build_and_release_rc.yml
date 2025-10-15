@@ -11,7 +11,7 @@ on:
         type: string
         default: ''
       linux-x86_64:
-        description: 'Linux amd64'
+        description: 'Linux x86_64'
         type: boolean
         default: true
       linux-arm64:
@@ -19,11 +19,11 @@ on:
         type: boolean
         default: false
       macos-x86_64:
-        description: 'Intel Mac'
+        description: 'MacOS x86_64'
         type: boolean
         default: false
       macos-arm64:
-        description: 'Apple silicon Mac'
+        description: 'MacOS arm64'
         type: boolean
         default: true
 
