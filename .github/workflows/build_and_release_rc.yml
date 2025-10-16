@@ -171,6 +171,7 @@ jobs:
       - name: Create release name
         id: release-name
         run: |
+          HASH='${{ inputs.commit_hash }}'
           SHORT_HASH=${HASH:0:8}
           RELEASE_NAME="$(date +'%F %H:%M') $SHORT_HASH"
           echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
