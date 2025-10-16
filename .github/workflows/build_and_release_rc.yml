@@ -166,25 +166,21 @@ jobs:
       - name: List files
         run: ls -R ${{ github.workspace }}
 
-      - name: Find number of releases
-        id: release-count
-        run: |
-          NEXT_RELEASE=$(( $(gh release list | wc -l) + 1 ))
-          echo "NEXT_RELEASE=$NEXT_RELEASE" >> "$GITHUB_OUTPUT"
-
-      - name: Shorten hash
-        id: hash-shortening
-        env:
-          HASH: ${{ inputs.commit_hash }}
+        # The date's format is 'yyyy-mm-dd hh:mm'
+        # E.g. 2025-10-16 12:27
+      - name: Create release name
+        id: release-name
         run: |
           SHORT_HASH=${HASH:0:8}
+          RELEASE_NAME="$(date +'%F %H:%M') $SHORT_HASH"
           echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Release Smelter RC
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.release-count.outputs.NEXT_RELEASE }}-${{ steps.hash-shortening.outputs.SHORT_HASH }}
-          tag_name: ${{ steps.hash-shortening.outputs.SHORT_HASH }}
+          name: ${{ steps.release-name.outputs.RELEASE_NAME }}
+          tag_name: ${{ steps.release-name.outputs.SHORT_HASH }}
           body: ${{ inputs.description }}
           files: ${{ github.workspace }}/**/smelter*.tar.gz
           preserve_order: true
