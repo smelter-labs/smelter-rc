@@ -96,6 +96,9 @@ jobs:
       - name: 🛠 Install system dependencies
         run: brew install ffmpeg
 
+      - name: Show FFmpeg installation
+        run: ffmpeg -version
+
       - name: 🔧 Install the rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
