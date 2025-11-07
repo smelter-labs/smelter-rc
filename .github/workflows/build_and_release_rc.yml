@@ -26,6 +26,10 @@ on:
         description: 'MacOS arm64'
         type: boolean
         default: true
+      docker:
+        description: 'Publish docker rc'
+        type: boolean
+        default: false
 
 jobs:
   binaries-linux-x86_64:
@@ -203,6 +207,7 @@ jobs:
 
   docker-amd64:
     runs-on: ubuntu-latest
+    if: ${{ inputs.docker }}
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v4
@@ -223,6 +228,7 @@ jobs:
 
   docker-arm64:
     needs: [docker-amd64, docker-with-web-renderer-arm64]
+    if: ${{ inputs.docker }}
     runs-on: ubuntu-24.04-arm
     steps:
       - name: 📥 Checkout repo
@@ -259,6 +265,7 @@ jobs:
         run: docker manifest push ghcr.io/smelter-labs/smelter-rc:${{ github.sha }}
 
   docker-with-web-renderer-amd64:
+    if: ${{ inputs.docker }}
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repo
@@ -279,6 +286,7 @@ jobs:
         run: docker push ghcr.io/smelter-labs/smelter-rc:${{ github.sha }}-web-renderer
 
   docker-with-web-renderer-arm64:
+    if: ${{ inputs.docker }}
     needs: docker-with-web-renderer-amd64
     runs-on: ubuntu-24.04-arm
     steps:
