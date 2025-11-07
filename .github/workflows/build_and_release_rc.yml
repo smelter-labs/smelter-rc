@@ -170,8 +170,19 @@ jobs:
 
   release-rc:
     runs-on: ubuntu-24.04
-    if: ${{ always() && !failure() && !cancelled() }}
     needs: [binaries-linux-x86_64, binaries-linux-aarch64, binaries-macos-x86_64, binaries-macos-aarch64]
+    if: >-
+      ${{ 
+        (
+          needs.binaries-linux-x86_64.result == 'success' ||
+          needs.binaries-linux-aarch64.result == 'success' ||
+          needs.binaries-macos-x86_64.result == 'success' ||
+          needs.binaries-macos-aarch64.result == 'success'
+        ) &&
+        always() &&
+        !failure() &&
+        !cancelled()
+      }}
     permissions:
       contents: write
     steps:
