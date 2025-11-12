@@ -102,7 +102,7 @@ jobs:
           path: ./tools/build/smelter_linux_aarch64.tar.gz
 
   binaries-macos-x86_64:
-    runs-on: macos-13
+    runs-on: macos-15-intel
     if: ${{ inputs.macos-x86_64 }}
     steps:
       - name: 🛠 Install system dependencies
@@ -134,7 +134,7 @@ jobs:
           path: ./tools/build/smelter_with_web_renderer_darwin_x86_64.tar.gz
 
   binaries-macos-aarch64:
-    runs-on: macos-14
+    runs-on: macos-15
     if: ${{ inputs.macos-arm64 }}
     steps:
       - name: 🛠 Install system dependencies
