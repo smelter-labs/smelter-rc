@@ -245,10 +245,10 @@ jobs:
 
       - name: 🔨 Build Smelter image
         run: |
-          docker buildx build --platform linux/amd64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }} -f tools/docker/slim.Dockerfile .
+          docker buildx build --platform linux/amd64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-x86_64 -f tools/docker/slim.Dockerfile .
 
       - name: 📤  Upload image
-        run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}
+        run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-x86_64
 
   docker-arm64:
     if: ${{ inputs.docker-no-web-renderer }}
@@ -273,28 +273,13 @@ jobs:
           SHORT_HASH=${HASH:0:8}
           echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
 
-      - name: 🎣 Pull Smleter AMD64 image
-        run: |
-          docker pull ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}
-          echo "AMD64_IMAGE_ID=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }})" >> "$GITHUB_ENV"
-
       - name: 🔨 Build Smelter ARM64 image
         run: |
-          docker buildx build --platform linux/arm64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }} -f tools/docker/slim.Dockerfile .
+          docker buildx build --platform linux/arm64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-arm64 -f tools/docker/slim.Dockerfile .
 
       - name: ⏩ Push ARM64 image
         run: |
-          docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}
-          echo "ARM64_IMAGE_ID=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }})" >> "$GITHUB_ENV"
-
-      - name: 🔗 Merge AMD64 and ARM64 images
-        run: |
-          docker manifest create ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }} ${{ env.AMD64_IMAGE_ID }} ${{ env.ARM64_IMAGE_ID }}
-          docker manifest annotate ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }} ${{ env.AMD64_IMAGE_ID }} --arch amd64
-          docker manifest annotate ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }} ${{ env.ARM64_IMAGE_ID }} --arch arm64
-
-      - name: 📤  Upload image
-        run: docker manifest push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}
+          docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-arm64
 
   docker-with-web-renderer-amd64:
     if: ${{ inputs.docker-web-renderer }}
@@ -321,10 +306,10 @@ jobs:
 
       - name: 🔨 Build Smelter with Web Renderer image
         run: |
-          docker buildx build --platform linux/amd64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer -f tools/docker/full.Dockerfile .
+          docker buildx build --platform linux/amd64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-x86_64 -f tools/docker/full.Dockerfile .
 
       - name: 📤  Upload image
-        run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer
+        run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-x86_64
 
   docker-with-web-renderer-arm64:
     if: ${{ inputs.docker-web-renderer }}
@@ -349,25 +334,10 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: 🎣 Pull Smleter AMD64 image
-        run: |
-          docker pull ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer
-          echo "AMD64_IMAGE_ID=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer)" >> "$GITHUB_ENV"
-
       - name: 🔨 Build Smelter ARM64 image
         run: |
-          docker buildx build --platform linux/arm64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer -f tools/docker/full.Dockerfile .
+          docker buildx build --platform linux/arm64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-arm64 -f tools/docker/full.Dockerfile .
 
       - name: ⏩ Push ARM64 image
         run: |
-          docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer
-          echo "ARM64_IMAGE_ID=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer)" >> "$GITHUB_ENV"
-
-      - name: 🔗 Merge AMD64 and ARM64 images
-        run: |
-          docker manifest create ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer ${{ env.AMD64_IMAGE_ID }} ${{ env.ARM64_IMAGE_ID }}
-          docker manifest annotate ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer ${{ env.AMD64_IMAGE_ID }} --arch amd64
-          docker manifest annotate ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer ${{ env.ARM64_IMAGE_ID }} --arch arm64
-
-      - name: 📤  Upload image
-        run: docker manifest push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer
+          docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-arm64
