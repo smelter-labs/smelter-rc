@@ -26,8 +26,12 @@ on:
         description: 'MacOS arm64'
         type: boolean
         default: true
-      docker:
-        description: 'Publish docker rc'
+      docker-no-web-renderer:
+        description: 'Publish docker rc - no web renderer'
+        type: boolean
+        default: false
+      docker-web-renderer:
+        description: 'Publish docker rc - web renderer'
         type: boolean
         default: false
 
@@ -218,7 +222,7 @@ jobs:
 
   docker-amd64:
     runs-on: ubuntu-latest
-    if: ${{ inputs.docker }}
+    if: ${{ inputs.docker-no-web-renderer }}
     permissions: 
       packages: write
     steps:
@@ -247,8 +251,7 @@ jobs:
         run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}
 
   docker-arm64:
-    needs: [docker-amd64, docker-with-web-renderer-arm64]
-    if: ${{ inputs.docker }}
+    if: ${{ inputs.docker-no-web-renderer }}
     runs-on: ubuntu-24.04-arm
     permissions: 
       packages: write
@@ -294,7 +297,7 @@ jobs:
         run: docker manifest push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}
 
   docker-with-web-renderer-amd64:
-    if: ${{ inputs.docker }}
+    if: ${{ inputs.docker-web-renderer }}
     runs-on: ubuntu-latest
     permissions: 
       packages: write
@@ -324,8 +327,7 @@ jobs:
         run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer
 
   docker-with-web-renderer-arm64:
-    if: ${{ inputs.docker }}
-    needs: docker-with-web-renderer-amd64
+    if: ${{ inputs.docker-web-renderer }}
     runs-on: ubuntu-24.04-arm
     permissions: 
       packages: write
