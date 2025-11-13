@@ -26,6 +26,14 @@ on:
         description: 'MacOS arm64'
         type: boolean
         default: true
+      docker-no-web-renderer:
+        description: 'Publish docker rc - no web renderer'
+        type: boolean
+        default: false
+      docker-web-renderer:
+        description: 'Publish docker rc - web renderer'
+        type: boolean
+        default: false
 
 jobs:
   binaries-linux-x86_64:
@@ -98,7 +106,7 @@ jobs:
           path: ./tools/build/smelter_linux_aarch64.tar.gz
 
   binaries-macos-x86_64:
-    runs-on: macos-13
+    runs-on: macos-15-intel
     if: ${{ inputs.macos-x86_64 }}
     steps:
       - name: 🛠 Install system dependencies
@@ -130,7 +138,7 @@ jobs:
           path: ./tools/build/smelter_with_web_renderer_darwin_x86_64.tar.gz
 
   binaries-macos-aarch64:
-    runs-on: macos-14
+    runs-on: macos-15
     if: ${{ inputs.macos-arm64 }}
     steps:
       - name: 🛠 Install system dependencies
@@ -166,8 +174,19 @@ jobs:
 
   release-rc:
     runs-on: ubuntu-24.04
-    if: ${{ always() && !failure() && !cancelled() }}
     needs: [binaries-linux-x86_64, binaries-linux-aarch64, binaries-macos-x86_64, binaries-macos-aarch64]
+    if: >-
+      ${{ 
+        (
+          needs.binaries-linux-x86_64.result == 'success' ||
+          needs.binaries-linux-aarch64.result == 'success' ||
+          needs.binaries-macos-x86_64.result == 'success' ||
+          needs.binaries-macos-aarch64.result == 'success'
+        ) &&
+        always() &&
+        !failure() &&
+        !cancelled()
+      }}
     permissions:
       contents: write
     steps:
@@ -199,3 +218,126 @@ jobs:
           body: ${{ inputs.description }}
           files: ${{ github.workspace }}/**/smelter*.tar.gz
           preserve_order: true
+
+
+  docker-amd64:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.docker-no-web-renderer }}
+    permissions: 
+      packages: write
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: 🛠️ Setup Docker
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Shorten hash
+        id: short-hash
+        run: |
+          HASH='${{ inputs.commit_hash }}'
+          SHORT_HASH=${HASH:0:8}
+          echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
+
+      - name: 🔨 Build Smelter image
+        run: |
+          docker buildx build --platform linux/amd64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-x86_64 -f tools/docker/slim.Dockerfile .
+
+      - name: 📤  Upload image
+        run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-x86_64
+
+  docker-arm64:
+    if: ${{ inputs.docker-no-web-renderer }}
+    runs-on: ubuntu-24.04-arm
+    permissions: 
+      packages: write
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: 🛠️ Setup Docker
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Shorten hash
+        id: short-hash
+        run: |
+          HASH='${{ inputs.commit_hash }}'
+          SHORT_HASH=${HASH:0:8}
+          echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
+
+      - name: 🔨 Build Smelter ARM64 image
+        run: |
+          docker buildx build --platform linux/arm64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-arm64 -f tools/docker/slim.Dockerfile .
+
+      - name: ⏩ Push ARM64 image
+        run: |
+          docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-arm64
+
+  docker-with-web-renderer-amd64:
+    if: ${{ inputs.docker-web-renderer }}
+    runs-on: ubuntu-latest
+    permissions: 
+      packages: write
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: Shorten hash
+        id: short-hash
+        run: |
+          HASH='${{ inputs.commit_hash }}'
+          SHORT_HASH=${HASH:0:8}
+          echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
+
+      - name: 🛠️ Setup Docker
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: 🔨 Build Smelter with Web Renderer image
+        run: |
+          docker buildx build --platform linux/amd64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-x86_64 -f tools/docker/full.Dockerfile .
+
+      - name: 📤  Upload image
+        run: docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-x86_64
+
+  docker-with-web-renderer-arm64:
+    if: ${{ inputs.docker-web-renderer }}
+    runs-on: ubuntu-24.04-arm
+    permissions: 
+      packages: write
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: 'software-mansion/smelter'
+          ref: '${{ inputs.commit_hash }}'
+
+      - name: Shorten hash
+        id: short-hash
+        run: |
+          HASH='${{ inputs.commit_hash }}'
+          SHORT_HASH=${HASH:0:8}
+          echo "SHORT_HASH=$SHORT_HASH" >> "$GITHUB_OUTPUT"
+
+      - name: 🛠️ Setup Docker
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: 🔨 Build Smelter ARM64 image
+        run: |
+          docker buildx build --platform linux/arm64 -t ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-arm64 -f tools/docker/full.Dockerfile .
+
+      - name: ⏩ Push ARM64 image
+        run: |
+          docker push ghcr.io/smelter-labs/smelter-rc:${{ steps.short-hash.outputs.SHORT_HASH }}-web-renderer-arm64
